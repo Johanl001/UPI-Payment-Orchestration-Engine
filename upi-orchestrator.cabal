@@ -1,0 +1,118 @@
+cabal-version:      3.0
+name:               upi-orchestrator
+version:            0.1.0.0
+synopsis:           Production-grade UPI payment orchestration engine in Haskell
+description:
+  A backend service that simulates routing, validating, and reconciling UPI
+  transactions across multiple mock payment gateways, with retry logic,
+  failure handling, and an auditable transaction ledger.
+license:            MIT
+author:             UPI Orchestrator
+maintainer:         upi@example.com
+category:           Finance, Web
+build-type:         Simple
+
+common shared-deps
+  build-depends:
+      base              >= 4.17 && < 5
+    , text              >= 2.0
+    , aeson             >= 2.1
+    , uuid              >= 1.3
+    , uuid-types        >= 1.0
+    , time              >= 1.12
+    , mtl               >= 2.3
+    , transformers      >= 0.6
+    , stm               >= 2.5
+    , async             >= 2.2
+    , containers        >= 0.6
+    , random            >= 1.2
+    , bytestring        >= 0.11
+    , fast-logger       >= 3.1
+
+  default-language:    GHC2021
+
+  default-extensions:
+    DataKinds
+    GADTs
+    KindSignatures
+    LambdaCase
+    OverloadedStrings
+    RecordWildCards
+    ScopedTypeVariables
+    StrictData
+    TypeFamilies
+    DerivingStrategies
+    DeriveGeneric
+    DeriveAnyClass
+    GeneralizedNewtypeDeriving
+
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Widentities
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wredundant-constraints
+    -Wno-unused-do-bind
+    -Wno-missing-export-lists
+
+library
+  import:          shared-deps
+  hs-source-dirs:  src
+  exposed-modules:
+    -- Domain
+    Domain.Transaction
+    Domain.Events
+    Domain.Gateway
+    -- Gateway implementations
+    Gateway.Class
+    Gateway.MockGatewayA
+    Gateway.MockGatewayB
+    Gateway.MockGatewayC
+    -- Orchestrator
+    Orchestrator.Router
+    Orchestrator.Retry
+    Orchestrator.Flow
+    -- Persistence
+    Persistence.Schema
+    Persistence.Repository
+    -- Reconciliation
+    Reconciliation.Job
+    -- API
+    API.Types
+    API.Routes
+    API.Handlers
+
+  build-depends:
+      persistent              >= 2.14
+    , persistent-sqlite       >= 2.13
+    , servant                 >= 0.20
+    , servant-server          >= 0.20
+    , warp                    >= 3.3
+    , http-types              >= 0.12
+    , resource-pool           >= 0.4
+    , template-haskell        >= 2.19
+
+executable upi-orchestrator-exe
+  import:          shared-deps
+  hs-source-dirs:  app
+  main-is:         Main.hs
+  build-depends:
+      upi-orchestrator
+    , persistent-sqlite
+    , warp
+
+test-suite upi-orchestrator-test
+  import:          shared-deps
+  type:            exitcode-stdio-1.0
+  hs-source-dirs:  test
+  main-is:         Main.hs
+  other-modules:
+    StateMachineSpec
+    RetrySpec
+    RouterSpec
+  build-depends:
+      upi-orchestrator
+    , hedgehog          >= 1.4
+    , tasty             >= 1.4
+    , tasty-hedgehog    >= 1.4
