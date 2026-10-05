@@ -19,10 +19,10 @@ Both are kept for pragmatic reasons: the mutable row makes status queries O(1).
 module Persistence.Schema
   ( migrateAll
   -- * Transaction record
-  , TransactionRecord (..)
+  , TransactionRecord(TransactionRecord)
   , TransactionRecordId
   -- * Event record
-  , EventRecord (..)
+  , EventRecord(EventRecord)
   , EventRecordId
   -- * Status/failure encodings (Text round-trips)
   , encodeStatus
@@ -34,41 +34,7 @@ module Persistence.Schema
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import Database.Persist.TH
-
--- ---------------------------------------------------------------------------
--- Persistent schema definition
--- ---------------------------------------------------------------------------
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-
--- | Current state of each UPI transaction.
-TransactionRecord
-  txnId           Text          -- UUID as text (primary business key)
-  idempotencyKey  Text
-  payerVpa        Text
-  payeeVpa        Text
-  amountPaise     Int
-  status          Text          -- "Initiated"|"Pending"|"Success"|"Failed"|"TimedOut"|"Reconciled"
-  gatewayId       Text Maybe    -- NULL until sent to a gateway
-  gatewayRef      Text Maybe    -- NULL until gateway confirms
-  failureReason   Text Maybe    -- NULL unless Failed
-  retryCount      Int
-  createdAt       UTCTime
-  updatedAt       UTCTime
-  UniqueIdempotencyKey idempotencyKey  -- DB-level uniqueness guarantee
-  deriving Show
-
--- | Append-only audit event log — never UPDATE or DELETE rows here.
-EventRecord
-  eventId         Text          -- UUID as text
-  txnId           Text          -- FK to TransactionRecord.txnId (by business key)
-  seqNum          Int           -- Monotonically increasing per txnId
-  eventType       Text          -- e.g. "TxnCreated", "TxnSentToGateway", ...
-  eventPayload    Text          -- JSON-encoded event payload
-  createdAt       UTCTime
-  deriving Show
-
-|]
+import Persistence.SchemaDefs (migrateAll, TransactionRecord(TransactionRecord), TransactionRecordId, EventRecord(EventRecord), EventRecordId)
 
 -- ---------------------------------------------------------------------------
 -- Text encodings for status and failure (no orphan instances needed)
@@ -112,6 +78,6 @@ decodeTerminalFailure t = case t of
   "DAILY_LIMIT_EXCEEDED" -> "DailyLimitExceeded"
   "VPA_DEREGISTERED"   -> "VPADeregistered"
   "BANK_ACCOUNT_BLOCKED" -> "BankAccountBlocked"
-  "INVALID_AMOUNT"     -> "InvalidAmount"
-  "DUPLICATE_DETECTED" -> "DuplicateDetectedByBank"
+  "INVALID_AMOUNT"     -> "INVALID_AMOUNT"
+  "DUPLICATE_DETECTED" -> "DUPLICATE_DETECTED"
   _                    -> "UnknownFailure"
