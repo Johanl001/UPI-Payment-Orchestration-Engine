@@ -23,8 +23,8 @@ module Reconciliation.Job
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (async, Async)
 import Control.Monad.Except (runExceptT)
-import Data.Text (Text, pack)
-import Data.Time (getCurrentTime, nominalDiffTimeToSeconds)
+import Data.Text (pack)
+import Data.Time (getCurrentTime, NominalDiffTime)
 import Data.UUID (fromText)
 import System.IO (hPutStrLn, stderr)
 
@@ -36,9 +36,10 @@ import Gateway.MockGatewayA (mkMockGatewayA)
 import Gateway.MockGatewayB (mkMockGatewayB)
 import Gateway.MockGatewayC (mkMockGatewayC)
 import Persistence.Repository (DbPool, getPendingOlderThan, updateTransactionStatus, appendEvent)
-import Persistence.Schema (TransactionRecord (..), decodeStatus)
+import Persistence.Schema (TransactionRecord (..))
+import Persistence.SchemaDefs (transactionRecordTxnId, transactionRecordGatewayId, transactionRecordIdempotencyKey, transactionRecordRetryCount)
 import Orchestrator.Flow (OrchestratorEnv (..))
-import Domain.Events (EventId (..), EventEnvelope (..), mkEventEnvelope)
+import Domain.Events (EventId (..), mkEventEnvelope)
 import Data.UUID.V4 (nextRandom)
 import Control.Concurrent.STM (atomically, modifyTVar', readTVar)
 import qualified Data.Map.Strict as Map
@@ -117,7 +118,7 @@ reconcileTxn pool env rec = do
               eid <- EventId <$> nextRandom
               seqN <- bumpSeq env tid
               let evt = mkEventEnvelope eid tid seqN now
-                          (TxnReconciled (ConfirmedSuccess gid gwRef))
+                          (Domain.Events.TxnReconciled (ConfirmedSuccess gid gwRef))
               appendEvent pool evt
               logInfo $ "Reconcile: SUCCESS " <> show tidText
 
@@ -130,7 +131,7 @@ reconcileTxn pool env rec = do
               eid  <- EventId <$> nextRandom
               seqN <- bumpSeq env tid
               let evt = mkEventEnvelope eid tid seqN now
-                          (TxnReconciled (ConfirmedFailed gid reason))
+                          (Domain.Events.TxnReconciled (ConfirmedFailed gid reason))
               appendEvent pool evt
               logInfo $ "Reconcile: FAILED " <> show tidText
 
