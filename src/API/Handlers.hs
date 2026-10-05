@@ -18,19 +18,23 @@ module API.Handlers
   , auditHandler
   ) where
 
+import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
-import Data.Text (Text, pack)
+import Data.ByteString.Lazy.Char8 (pack)
+import Data.ByteString.Lazy.Char8 (unpack)
+import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Time (getCurrentTime)
 import Data.UUID (fromText, toText)
 import Numeric.Natural (Natural)
 import Servant
 
 import API.Types
-import Domain.Gateway (GatewayId (..))
-import Domain.Transaction
+import Domain.Transaction (GatewayId (..), TransactionId (..), VPA (..), Amount (..), IdempotencyKey (..), unTransactionId)
 import Orchestrator.Flow
 import Persistence.Repository (DbPool, mkPool, getTransaction, getEventHistory, updateTransactionStatus)
 import Persistence.Schema (TransactionRecord (..), EventRecord (..))
+import Persistence.SchemaDefs (transactionRecordTxnId, transactionRecordStatus, transactionRecordGatewayId, transactionRecordGatewayRef, transactionRecordFailureReason, transactionRecordRetryCount, transactionRecordCreatedAt, transactionRecordUpdatedAt, eventRecordEventId, eventRecordSeqNum, eventRecordEventType, eventRecordEventPayload, eventRecordCreatedAt)
 
 -- ---------------------------------------------------------------------------
 -- Application environment
@@ -56,11 +60,11 @@ initiateHandler :: AppEnv -> InitiateRequest -> Handler InitiateResponse
 initiateHandler AppEnv{..} req = do
   -- Basic validation
   when (initiateAmountPaise req <= 0) $
-    throwError err400 { errBody = "Amount must be positive" }
-  when (null (initiatePayerVpa req)) $
-    throwError err400 { errBody = "payerVpa is required" }
-  when (null (initiatePayeeVpa req)) $
-    throwError err400 { errBody = "payeeVpa is required" }
+    throwError err400 { errBody = pack "Amount must be positive" }
+  when (T.null (initiatePayerVpa req)) $
+    throwError err400 { errBody = pack "payerVpa is required" }
+  when (T.null (initiatePayeeVpa req)) $
+    throwError err400 { errBody = pack "payeeVpa is required" }
 
   -- Build domain request
   let domainReq = TransactionRequest
@@ -75,9 +79,9 @@ initiateHandler AppEnv{..} req = do
 
   case result of
     Left (OrchestratorDBError msg) ->
-      throwError err500 { errBody = "DB error: " <> show msg }
+      throwError err500 { errBody = pack ("DB error: " <> show msg) }
     Left (OrchestratorInternalError msg) ->
-      throwError err500 { errBody = "Internal error: " <> show msg }
+      throwError err500 { errBody = pack ("Internal error: " <> show msg) }
 
     Right (TxnResultSuccess tid gwRef gid attempts) ->
       pure InitiateResponse
@@ -92,7 +96,7 @@ initiateHandler AppEnv{..} req = do
         { initiateRespTxnId     = toText (unTransactionId tid)
         , initiateRespStatus    = "Failed"
         , initiateRespGatewayRef = Nothing
-        , initiateRespMessage   = "Payment failed: " <> pack (show reason)
+        , initiateRespMessage   = "Payment failed: " <> T.pack (show reason)
         }
 
     Right (TxnResultIdempotentHit tid status) ->
