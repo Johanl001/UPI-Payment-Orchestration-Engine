@@ -28,6 +28,7 @@ common shared-deps
     , random            >= 1.2
     , bytestring        >= 0.11
     , fast-logger       >= 3.1
+    , monad-logger      >= 0.3
 
   default-language:    GHC2021
 
@@ -83,6 +84,9 @@ library
     API.Routes
     API.Handlers
 
+  other-modules:
+    Persistence.SchemaDefs
+
   build-depends:
       persistent              >= 2.14
     , persistent-sqlite       >= 2.13
@@ -101,6 +105,8 @@ executable upi-orchestrator-exe
       upi-orchestrator
     , persistent-sqlite
     , warp
+    , servant
+    , servant-server
 
 test-suite upi-orchestrator-test
   import:          shared-deps
