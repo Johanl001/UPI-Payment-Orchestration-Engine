@@ -13,6 +13,7 @@ module Orchestrator.Retry
   ( RetryPolicy (..)
   , defaultRetryPolicy
   , RetryState (..)
+  , initialRetryState
   , RetryOutcome (..)
   , withRetry
   -- * Idempotency store

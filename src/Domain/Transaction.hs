@@ -56,6 +56,9 @@ module Domain.Transaction
   , SomeTxn (..)
   , someTxn
 
+    -- * Reconciliation outcome (exported for Events module)
+  , ReconciliationOutcome (..)
+
     -- * Helpers
   , txnId
   , txnCore
