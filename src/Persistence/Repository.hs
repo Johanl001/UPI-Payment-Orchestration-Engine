@@ -18,6 +18,7 @@ module Persistence.Repository
   ) where
 
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Logger (runNoLoggingT)
 import Data.Aeson (encode, toJSON)
 import qualified Data.Aeson as Aeson
 import Data.ByteString.Lazy (toStrict)
@@ -29,9 +30,10 @@ import Database.Persist.Sqlite
 import Database.Persist.TH ()
 
 import Domain.Events (EventEnvelope (..), EventId (..), TransactionEvent (..))
-import Domain.Gateway (GatewayId (..))
+import Domain.Gateway
 import Domain.Transaction
 import Persistence.Schema
+import Persistence.SchemaDefs
 
 -- ---------------------------------------------------------------------------
 -- Connection pool
@@ -166,5 +168,5 @@ eventTypeName = \case
   TxnTerminallyFailed{}  -> "TxnTerminallyFailed"
   TxnRetryableFailure{}  -> "TxnRetryableFailure"
   TxnGatewayTimeout{}    -> "TxnGatewayTimeout"
-  TxnReconciled{}        -> "TxnReconciled"
+  Domain.Events.TxnReconciled{}        -> "TxnReconciled"
   TxnIdempotentReturn{}  -> "TxnIdempotentReturn"
